@@ -1,28 +1,28 @@
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Random;
 
 public class Solver {
 
     WindFarmLayoutEvaluator wfle;
-    boolean[][] individuals;
+    ArrayList<Chromosome> individuals;
     double[] fits;
     Random rand;
-    int worstPosition;
     double maxfit = Double.MIN_VALUE;
     int num_individuals;
     double mutateRate = 0.08;
     
     ArrayList<double[]> grid;
 
-    public Solver(WindFarmLayoutEvaluator evaluator) {
+    public Solver(WindFarmLayoutEvaluator evaluator) { 
         wfle = evaluator;
         rand = new Random();
         grid = new ArrayList<double[]>();
         
-        // set up any parameter here, e.g pop size, cross_rate etc.
-        num_individuals = 50;  // change this to anything you want
+        // set up any parameter here, e.g pop size, cross_rate etc. 0.0012730013041638835
+        num_individuals = 150;  // change this to anything you want
         
         
     }
@@ -63,109 +63,135 @@ public class Solver {
         //  the variable grid.size() denotes the 
   		// maximum number of turbines for the given scenario
   	
-        individuals = new boolean[num_individuals][grid.size()];
+        individuals = new ArrayList<Chromosome>();
         fits = new double[num_individuals];
 
         for (int p=0; p<num_individuals; p++) {
-            for (int i=0; i<grid.size(); i++) {
-                individuals[p][i] = rand.nextBoolean();
-            }
+        		Chromosome chromo = new Chromosome(this.grid.size());
+                individuals.add(chromo.generateChromosome());
         }
 
        /****** evaluate initial population  *************************/
      
-        // this populates the fit[] array with the fitness values for each solution 0.0012725460166271383
+        // this populates the fit[] array with the fitness values for each solution 0.0012775370037469375
         evaluate();
-
+        
+        Collections.sort(individuals);
+        System.out.println("min " + individuals.get(individuals.size()-1).getFitness());
         /**** PUT YOUR OPTIMISER CODE HERE ***********/
         
         for (int i=0; i<(1000); i++) {
-        	System.out.println(i);
-        	boolean[] parent1 = selection(2);
-        	boolean[] parent2 = selection(2);
+       // 	System.out.println(i);
+        	Chromosome parent1 = selection(2);
+        	Chromosome parent2 = selection(2);
 
-			boolean[] c1 = crossover(parent1, parent2);
+			Chromosome c1 = crossover(parent1, parent2);
 			
 			c1 = mutation(c1);
 
-			double childFitness = evaluate_individual(c1);
+			c1.setFitness(evaluate_individual(c1));
 			
-			if(childFitness > maxfit){
-				individuals[worstPosition] = c1;
-				fits[worstPosition] = childFitness;
-				System.out.println("replacement " + childFitness); 
+			c1 = hillclimb(c1);
+			
+			System.out.println(c1.getFitness() + "  vs " + individuals.get(0).getFitness());
+			
+			if(c1.getFitness() < individuals.get(0).getFitness()){
+				individuals.remove(0);
+				individuals.add(c1);
+				Collections.sort(individuals);
+				System.out.println("replacement " + c1.getFitness()); 
 			}
 
         	     	
         }
-        evaluate();
+        System.out.println("min " + individuals.get(individuals.size()-1).getFitness());
+        System.out.println("Evaluations: " + wfle.getNumberOfEvaluation());
       }
 
-	public boolean[] selection(int tnSize)
+	public Chromosome selection(int tnSize)
 	{	
-			ArrayList<boolean[]> tournament = new ArrayList<boolean[]>();
-			boolean[] chosenParent = null;
-			int pos = rand.nextInt(this.individuals.length-1);
+			ArrayList<Chromosome> tournament = new ArrayList<Chromosome>();
+			Chromosome chosenParent = null;
+			int pos = rand.nextInt(num_individuals-1);
 			double bestFitness = 100;
 			
 			for(int i = 0; i < tnSize; i++)
 			{	
-				tournament.add(this.individuals[pos]);
+				tournament.add(this.individuals.get(pos));
 			}
 			
-			for(boolean[] indiv : tournament)
+			for(Chromosome indiv : tournament)
 			{
-				if(fits[pos] < bestFitness)
+				if(indiv.getFitness() < bestFitness)
 				{
-					bestFitness = fits[pos];
+					bestFitness = indiv.getFitness();
 					chosenParent = indiv;
 				}
 			}
 			return chosenParent;
 	}
     
-    private boolean[] crossover(boolean[] p1, boolean[] p2) {
-		boolean[] c1 = new boolean[this.grid.size()];
+    private Chromosome crossover(Chromosome p1, Chromosome p2) {
+    	Chromosome c1 = new Chromosome(this.grid.size());
 		
 			int max = this.grid.size() - 1;
 			int min = 1;
 			int crossoverPoint = rand.nextInt(max + min) + min;
-			for(int k = 0; k < p1.length; k++)
+			for(int k = 0; k < this.grid.size(); k++)
 			{
 				 if (k<crossoverPoint){
-				      c1[k] = p1[k];
-				 }else if(k < this.grid.size()){
-				    c1[k]= p2[k];
+				      c1.setGene(k, p1.getGene(k));
+				 }else{
+					 c1.setGene(k, p2.getGene(k));
 				    }
 				 }
 
 		return c1;
 	}
     
-    private boolean[] mutation(boolean[] child) {
+    private Chromosome mutation(Chromosome child) {
 		
-			for(int i = 0; i < child.length; i++){
+			for(int i = 0; i < this.grid.size(); i++){
 				double mutateChance = new BigDecimal(rand.nextDouble()).setScale(2, RoundingMode.HALF_UP).doubleValue();
 				if(mutateChance <= mutateRate)
 				{
-					if(child[i] == false){
-						child[i] = true;
+					if(child.getGene(i) == false){
+						child.setGene(i, true);
 					} 
 					else{
-						child[i] = false;
+						child.setGene(i, false);
 					}
 				}
 			}
 		return child;
 	}
     
+    public Chromosome hillclimb(Chromosome child)
+	{	
+    		Chromosome temp = child;
+			int move = rand.nextInt(this.grid.size());
+    		for(int i = 0; i < 10; i++){
+    			if(temp.getGene(move)){
+    				temp.setGene(move, false);
+    			}else{
+    				temp.setGene(move, true);
+    			}
+    			temp.setFitness(evaluate_individual(temp));
+    			if(temp.getFitness() < child.getFitness()){
+    				child = temp;
+    			}
+    		}
+    	
+			return child;
+	}
+    
     // evaluate a single chromosome
-    private double evaluate_individual(boolean[] child) {
+    private double evaluate_individual(Chromosome child) {
  
        
          int nturbines=0;
          for (int i=0; i<grid.size(); i++) {
-                if (child[i]) {
+                if (child.getGene(i)) {
                     nturbines++;
                 }
          }
@@ -174,7 +200,7 @@ public class Solver {
           double[][] layout = new double[nturbines][2];
             int l_i = 0;
             for (int i=0; i<grid.size(); i++) {
-                if (child[i]) {
+                if (child.getGene(i)) {
                     layout[l_i][0] = grid.get(i)[0];
                     layout[l_i][1] = grid.get(i)[1];
                     l_i++;
@@ -195,13 +221,14 @@ public class Solver {
         
     }
 
-    // evaluates the whole population 0.0014990008161565244
+    // evaluates the whole population
     private void evaluate() {
         double minfit = Double.MAX_VALUE;
         for (int p=0; p<num_individuals; p++) {
+        	Chromosome indiv = individuals.get(p);
             int nturbines=0;
             for (int i=0; i<grid.size(); i++) {
-                if (individuals[p][i]) {
+                if (indiv.getGene(i)) {
                     nturbines++;
                 }
             }
@@ -209,7 +236,7 @@ public class Solver {
             double[][] layout = new double[nturbines][2];
             int l_i = 0;
             for (int i=0; i<grid.size(); i++) {
-                if (individuals[p][i]) {
+                if (indiv.getGene(i)) {
                     layout[l_i][0] = grid.get(i)[0];
                     layout[l_i][1] = grid.get(i)[1];
                     l_i++;
@@ -223,17 +250,9 @@ public class Solver {
 	    } else {
 		coe = Double.MAX_VALUE;
 	    }
-
-            fits[p] = coe;
-            if (fits[p] < minfit) {
-                minfit = fits[p];
-            }
-            if (fits[p] > maxfit) {
-                maxfit = fits[p];
-                worstPosition = p;
-            }
+	    	indiv.setFitness(coe);
         }
-        System.out.println("min " + minfit);
+        
     }
 
     
