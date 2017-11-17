@@ -12,19 +12,22 @@ public class Solver {
     Random rand;
     double maxfit = Double.MIN_VALUE;
     int num_individuals;
+    int generations;
+    int climbs;
+    int chromosomeDistance = 20;
     double mutateRate = 0.08;
     
     ArrayList<double[]> grid;
 
-    public Solver(WindFarmLayoutEvaluator evaluator) { 
+    public Solver(WindFarmLayoutEvaluator evaluator,int population, int generationsNum, int climbItterations) { 
         wfle = evaluator;
         rand = new Random();
         grid = new ArrayList<double[]>();
         
         // set up any parameter here, e.g pop size, cross_rate etc. 0.0012730013041638835
-        num_individuals = 150;  // change this to anything you want
-        
-        
+        num_individuals = population;  // change this to anything you want
+        generations = generationsNum; 
+        climbs = climbItterations;     
     }
     
     
@@ -80,13 +83,20 @@ public class Solver {
         System.out.println("min " + individuals.get(individuals.size()-1).getFitness());
         /**** PUT YOUR OPTIMISER CODE HERE ***********/
         
-        for (int i=0; i<(1000); i++) {
-       // 	System.out.println(i);
+        for (int i=0; i<(generations); i++) {
+        	System.out.println(i);
         	Chromosome parent1 = selection(2);
-        	Chromosome parent2 = selection(2);
-
-			Chromosome c1 = crossover(parent1, parent2);
-			
+        	Chromosome parent2 = selection(1);
+        	Chromosome c1;
+        	
+        	for(int j = 0; j < 10; j++){
+	        	if(calculateDistance(parent1, parent2) > chromosomeDistance || parent1 == parent2){
+	        		parent2 = selection(1);
+	        	}
+        	}
+        		
+        	c1 = crossover(parent1, parent2);
+        	
 			c1 = mutation(c1);
 
 			c1.setFitness(evaluate_individual(c1));
@@ -102,7 +112,6 @@ public class Solver {
 				System.out.println("replacement " + c1.getFitness()); 
 			}
 
-        	     	
         }
         System.out.println("min " + individuals.get(individuals.size()-1).getFitness());
         System.out.println("Evaluations: " + wfle.getNumberOfEvaluation());
@@ -130,16 +139,14 @@ public class Solver {
 			}
 			return chosenParent;
 	}
-    
+    //Uniform crossover.
     private Chromosome crossover(Chromosome p1, Chromosome p2) {
     	Chromosome c1 = new Chromosome(this.grid.size());
 		
-			int max = this.grid.size() - 1;
-			int min = 1;
-			int crossoverPoint = rand.nextInt(max + min) + min;
 			for(int k = 0; k < this.grid.size(); k++)
 			{
-				 if (k<crossoverPoint){
+				 int uniformChance = rand.nextInt(1);
+				 if (uniformChance == 0){
 				      c1.setGene(k, p1.getGene(k));
 				 }else{
 					 c1.setGene(k, p2.getGene(k));
@@ -170,7 +177,7 @@ public class Solver {
 	{	
     		Chromosome temp = child;
 			int move = rand.nextInt(this.grid.size());
-    		for(int i = 0; i < 10; i++){
+    		for(int i = 0; i < climbs; i++){
     			if(temp.getGene(move)){
     				temp.setGene(move, false);
     			}else{
@@ -184,6 +191,20 @@ public class Solver {
     	
 			return child;
 	}
+    
+    public float calculateDistance(Chromosome p1, Chromosome p2){
+    	float difference = 0;
+    	
+    	for(int i = 0; i < grid.size(); i++){
+    		if(p1.getGene(i) != p2.getGene(i)){
+    			difference ++;
+    		}
+    	}
+    	difference = difference / grid.size() * 100;
+    	int distance = Math.round(difference);
+    	
+    	return distance;
+    }
     
     // evaluate a single chromosome
     private double evaluate_individual(Chromosome child) {

@@ -6,7 +6,7 @@ public class StartOptimiser {
 	KusiakLayoutEvaluator eval = new KusiakLayoutEvaluator();
 	WindScenario sc = new WindScenario("./Scenarios/practice_"+nSc+".xml");	  
 	eval.initialize(sc);
-	Solver algorithm = new Solver(eval);
+	Solver algorithm = new Solver(eval, 100, 100, 10);
 	algorithm.run_cw();
   }
 }
