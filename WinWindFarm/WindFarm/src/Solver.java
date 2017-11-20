@@ -1,3 +1,6 @@
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
@@ -27,12 +30,12 @@ public class Solver {
         // set up any parameter here, e.g pop size, cross_rate etc. 0.0012730013041638835
         num_individuals = population;  // change this to anything you want
         generations = generationsNum; 
-        climbs = climbItterations;     
+        climbs = climbItterations;    
     }
     
     
    
-    public void run_cw() {
+    public void run_cw() throws IOException {
     
 
     	
@@ -89,7 +92,7 @@ public class Solver {
         	Chromosome parent2 = selection(1);
         	Chromosome c1;
         	
-        	for(int j = 0; j < 10; j++){
+        	for(int j = 0; j < 100; j++){
 	        	if(calculateDistance(parent1, parent2) > chromosomeDistance || parent1 == parent2){
 	        		parent2 = selection(1);
 	        	}
@@ -111,7 +114,7 @@ public class Solver {
 				Collections.sort(individuals);
 				System.out.println("replacement " + c1.getFitness()); 
 			}
-
+			outputBest();
         }
         System.out.println("min " + individuals.get(individuals.size()-1).getFitness());
         System.out.println("Evaluations: " + wfle.getNumberOfEvaluation());
@@ -274,6 +277,17 @@ public class Solver {
 	    	indiv.setFitness(coe);
         }
         
+    }
+    
+    public void outputBest() throws IOException
+    {
+    	PrintWriter pw = new PrintWriter(new FileWriter("pop200.csv",true));
+        StringBuilder sb = new StringBuilder();	
+        sb.append(individuals.get(individuals.size()-1).getFitness());
+        sb.append('\n');
+
+        pw.write(sb.toString());
+        pw.close();
     }
 
     
